@@ -1,0 +1,31 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Utility to hide scrollbars while keeping functionality */
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}
+@media print {
+  /* Hide everything */
+  body * {
+    visibility: hidden;
+  }
+  /* Show only the slip and its children */
+  .delivery-slip-container, .delivery-slip-container * {
+    visibility: visible;
+  }
+  .delivery-slip-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
