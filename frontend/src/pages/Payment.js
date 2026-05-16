@@ -57,20 +57,22 @@ const Payment = () => {
       if (error) throw error;
 
       // --- 🚨 UPDATED ROBUST MOBILE NOTIFICATION BLOCK 🚨 ---
+     // --- 🚨 FIXED PAYLOAD NOTIFICATION BLOCK 🚨 ---
       try {
         await fetch('https://ntfy.sh/threadzs_orders_madurai', {
           method: 'POST',
-          body: `Drop Sold! ${customerDetails?.firstName || 'Customer'} just paid ₹${grandTotal}. UTR: ${utrNumber}`,
+          body: `🚨 THREADZS NEW ORDER: Drop Sold! ${customerDetails?.firstName || 'Customer'} just paid ₹${grandTotal}. UTR: ${utrNumber}`,
           headers: {
-            'Title': '🚨 THREADZS NEW ORDER',
+            'Title': 'THREADZS NEW ORDER',
             'Tags': 'package,moneybag',
-            'Priority': 'urgent'
+            'Priority': 'high'
           }
         });
         console.log("Ping sent to ntfy!");
       } catch (notifyError) {
         console.error("Push alert failed:", notifyError);
       }
+      // --------------------------------------------------
       // --------------------------------------------------
 
       localStorage.removeItem('threadzs_cart'); 
