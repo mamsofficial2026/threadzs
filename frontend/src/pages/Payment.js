@@ -59,20 +59,16 @@ const Payment = () => {
       const { error } = await supabase.from('orders').insert([orderPayload]);
       if (error) throw error;
 
-      // --- 🚨 ROBUST COMPATIBILITY NOTIFICATION BLOCK 🚨 ---
+      // --- 🚨 CACHE-BUSTER NOTIFICATION BLOCK 🚨 ---
       try {
-        await fetch('https://ntfy.sh/threadzs_orders_madurai', {
+        await fetch(`https://ntfy.sh/threadzs_orders_madurai?t=${Date.now()}`, {
           method: 'POST',
-          mode: 'cors',
-          credentials: 'omit',
-          body: notificationMessage
+          body: `THREADZS NEW ORDER - Drop Sold! Name: ${customerDetails?.firstName || 'Customer'} paid ${grandTotal}. UTR: ${utrNumber}`
         });
         console.log("Ping sent to ntfy!");
       } catch (notifyError) {
         console.error("Push alert failed:", notifyError);
       }
-      // --------------------------------------------------
-
       localStorage.removeItem('threadzs_cart'); 
       setPaymentStatus('success');
 
