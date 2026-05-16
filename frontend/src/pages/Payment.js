@@ -57,6 +57,8 @@ const Payment = () => {
       if (error) throw error;
 
       // --- 🚨 ADD THIS NEW MOBILE NOTIFICATION BLOCK 🚨 ---
+     // ... supabase insert code above this ...
+
       try {
         await fetch('https://ntfy.sh/threadzs_orders_madurai', {
           method: 'POST',
@@ -68,8 +70,10 @@ const Payment = () => {
           }
         });
       } catch (notifyError) {
-        console.error("Push alert failed, but order saved:", notifyError);
+        console.error("Push alert failed:", notifyError);
       }
+
+      // ... localStorage.removeItem('threadzs_cart'); below this ...
       // --------------------------------------------------
 
       localStorage.removeItem('threadzs_cart'); 
