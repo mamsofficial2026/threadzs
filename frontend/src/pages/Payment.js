@@ -54,8 +54,23 @@ const Payment = () => {
       };
 
       const { error } = await supabase.from('orders').insert([orderPayload]);
-      
       if (error) throw error;
+
+      // --- 🚨 ADD THIS NEW MOBILE NOTIFICATION BLOCK 🚨 ---
+      try {
+        await fetch('https://ntfy.sh/threadzs_orders_madurai', {
+          method: 'POST',
+          body: `Drop Sold! ${customerDetails.firstName} just paid ₹${grandTotal}. UTR: ${utrNumber}`,
+          headers: {
+            'Title': '🚨 THREADZS NEW ORDER',
+            'Tags': 'package,moneybag',
+            'Priority': 'urgent'
+          }
+        });
+      } catch (notifyError) {
+        console.error("Push alert failed, but order saved:", notifyError);
+      }
+      // --------------------------------------------------
 
       localStorage.removeItem('threadzs_cart'); 
       setPaymentStatus('success');
