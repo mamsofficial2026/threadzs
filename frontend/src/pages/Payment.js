@@ -42,6 +42,9 @@ const Payment = () => {
     setPaymentStatus('processing');
 
     try {
+      const currentName = String(customerDetails?.firstName || 'Customer').trim();
+      const notificationMessage = `THREADZS NEW ORDER - Drop Sold! Name: ${currentName} paid INR ${grandTotal}. UTR: ${utrNumber}`;
+
       const orderPayload = {
         customer_name: `${customerDetails.firstName || ''} ${customerDetails.lastName || ''}`.trim(),
         email: customerDetails.email || '',
@@ -56,18 +59,18 @@ const Payment = () => {
       const { error } = await supabase.from('orders').insert([orderPayload]);
       if (error) throw error;
 
-      // --- 🚨 UPDATED NTFY NOTIFICATION BLOCK 🚨 ---
+      // --- 🚨 ROBUST COMPATIBILITY NOTIFICATION BLOCK 🚨 ---
       try {
         await fetch('https://ntfy.sh/threadzs_orders_madurai', {
           method: 'POST',
-          body: `THREADZS NEW ORDER - Drop Sold! Name: ${customerDetails?.firstName || 'Customer'} paid ${grandTotal}. UTR: ${utrNumber}`
+          mode: 'cors',
+          credentials: 'omit',
+          body: notificationMessage
         });
         console.log("Ping sent to ntfy!");
       } catch (notifyError) {
         console.error("Push alert failed:", notifyError);
       }
-      // --------------------------------------------------
-      // --------------------------------------------------
       // --------------------------------------------------
 
       localStorage.removeItem('threadzs_cart'); 
@@ -192,7 +195,6 @@ const Payment = () => {
       </html>
     `;
 
-    // Package the blob framework structure as an external file element stream
     const fileBlob = new Blob([htmlTemplate], { type: 'text/html' });
     const downloadLink = document.createElement('a');
     downloadLink.href = URL.createObjectURL(fileBlob);
@@ -222,7 +224,6 @@ const Payment = () => {
           animate={{ opacity: 1, scale: 1 }}
           className="w-full max-w-[800px] shadow-2xl rounded-3xl overflow-hidden bg-white mb-10"
         >
-          {/* Renders the invoice directly cleanly inline on the screen layout */}
           <DeliverySlip order={{
             id: orderId,
             customerName: `${customerDetails.firstName || ''} ${customerDetails.lastName || ''}`.trim(),
@@ -232,11 +233,10 @@ const Payment = () => {
             itemName: checkoutItems[0]?.name || "Premium Drop",
             size: checkoutItems[0]?.size || "M",
             qty: checkoutItems[0]?.quantity || 1,
-            price: grandTotal // Matches inclusive total pricing calculation directly
+            price: grandTotal
           }} />
         </motion.div>
 
-        {/* INTERACTIVE ACTION BUTTONS */}
         <div className="flex flex-col sm:flex-row gap-4 w-full max-w-[400px]">
           <button 
             onClick={handleDownloadBill} 
