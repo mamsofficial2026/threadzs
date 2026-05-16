@@ -232,78 +232,48 @@ const AdminPanel = () => {
     setProducts(products.map(p => p.id === id ? { ...p, stock: newStock } : p));
     await supabase.from('products').update({ stock: newStock }).eq('id', id);
   };
-  // 1. Add these new states near your other order states
-const [orderMonthFilter, setOrderMonthFilter] = useState('all');
-const [isPurging, setIsPurging] = useState(false);
 
-// 2. New Logic to Filter Orders by Month
-const filteredOrders = orders.filter(order => {
-  if (orderMonthFilter === 'all') return true;
-  const orderDate = new Date(order.created_at);
-  const filterKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`;
-  return filterKey === orderMonthFilter;
-});
+  // 1. Order States
+  const [orderMonthFilter, setOrderMonthFilter] = useState('all');
+  const [isPurging, setIsPurging] = useState(false);
 
-// 3. Database Purge Function (Clears orders older than 3 months)
-const handlePurgeOldOrders = async () => {
-  const threeMonthsAgo = new Date();
-  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+  // 2. Filter Orders by Month
+  const filteredOrders = orders.filter(order => {
+    if (orderMonthFilter === 'all') return true;
+    const orderDate = new Date(order.created_at);
+    const filterKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`;
+    return filterKey === orderMonthFilter;
+  });
 
-  const confirmPurge = window.confirm(
-    `🚨 SUPABASE STORAGE WARNING: This will permanently delete all orders placed before ${threeMonthsAgo.toLocaleDateString()}. Are you sure?`
-  );
-const filteredOrders = orders.filter(order => {
-  if (orderMonthFilter === 'all') return true;
-  const orderDate = new Date(order.created_at);
-  const filterKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`;
-  return filterKey === orderMonthFilter;
-});
-const handlePurgeOldOrders = async () => {
-  const threeMonthsAgo = new Date();
-  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+  // 3. Database Purge Function
+  const handlePurgeOldOrders = async () => {
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
-  const confirmPurge = window.confirm(
-    `🚨 SUPABASE STORAGE WARNING: This will permanently delete all orders placed before ${threeMonthsAgo.toLocaleDateString()}. Are you sure?`
-  );
+    const confirmPurge = window.confirm(
+      `🚨 SUPABASE STORAGE WARNING: This will permanently delete all orders placed before ${threeMonthsAgo.toLocaleDateString()}. Are you sure?`
+    );
 
-  if (confirmPurge) {
-    setIsPurging(true);
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .delete()
-        .lt('created_at', threeMonthsAgo.toISOString());
+    if (confirmPurge) {
+      setIsPurging(true);
+      try {
+        const { error } = await supabase
+          .from('orders')
+          .delete()
+          .lt('created_at', threeMonthsAgo.toISOString());
 
-      if (error) throw error;
-      
-      alert("Database Optimized! Old order logs removed.");
-      fetchData(true);
-    } catch (err) {
-      alert("Purge failed: " + err.message);
-    } finally {
-      setIsPurging(false);
+        if (error) throw error;
+        
+        alert("Database Optimized! Old order logs removed.");
+        fetchData(true);
+      } catch (err) {
+        alert("Purge failed: " + err.message);
+      } finally {
+        setIsPurging(false);
+      }
     }
-  }
-};
-  if (confirmPurge) {
-    setIsPurging(true);
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .delete()
-        .lt('created_at', threeMonthsAgo.toISOString());
+  };
 
-      if (error) throw error;
-      
-      alert("Database Optimized! Old order logs removed.");
-      fetchData(true);
-    } catch (err) {
-      alert("Purge failed: " + err.message);
-    } finally {
-      setIsPurging(false);
-    }
-  }
-};
   const updateOrderStatus = async (orderId, newStatus) => {
     const updatedOrders = orders.map(order => order.id === orderId ? { ...order, status: newStatus } : order);
     setOrders(updatedOrders);
@@ -319,151 +289,136 @@ const handlePurgeOldOrders = async () => {
     return new Date(dateString).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
   };
 
-const printDeliverySlip = (order) => {
-  const printWindow = window.open('', '_blank');
-  const itemsArray = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
-  
-  // We calculate the total paid by the customer
-  const totalPaid = order.total_amount;
-  
-  // Since you want to hide shipping and add it to the product, 
-  // if there's only 1 item, we show the total_amount as that item's price.
-  // If there are multiple, we distribute the total proportionately.
-  const itemCount = itemsArray.length;
+  const printDeliverySlip = (order) => {
+    const printWindow = window.open('', '_blank');
+    const itemsArray = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
+    const totalPaid = order.total_amount;
+    const itemCount = itemsArray.length;
 
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>THREADZS - Packing Slip - ${order.id}</title>
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; padding: 40px; color: #111; max-width: 850px; margin: 0 auto; line-height: 1.5; }
-        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid #111; padding-bottom: 30px; margin-bottom: 40px; }
-        .brand-logo { font-size: 38px; font-weight: 900; font-style: italic; letter-spacing: -2px; text-transform: uppercase; margin: 0; }
-        .tagline { font-size: 10px; font-weight: 900; letter-spacing: 4px; text-transform: uppercase; color: #ea580c; margin-top: 5px; }
-        .doc-title { font-size: 22px; font-weight: 900; text-transform: uppercase; letter-spacing: -1px; margin: 0; }
-        .order-id { font-size: 10px; font-weight: 700; color: #999; text-transform: uppercase; margin-top: 5px; }
-        
-        .info-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; margin-bottom: 50px; }
-        .info-label { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; color: #ea580c; margin-bottom: 12px; }
-        .info-box { font-size: 14px; font-weight: 700; color: #444; }
-        .customer-name { font-size: 18px; font-weight: 900; color: #111; text-transform: uppercase; margin-bottom: 5px; }
-        
-        .payment-card { background: #111; color: #fff; padding: 25px; border-radius: 20px; }
-        .payment-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 8px; }
-        .payment-val { font-weight: 900; color: #fff; }
-        .payment-label { color: #888; }
-        
-        table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
-        th { padding: 15px 10px; border-bottom: 2px solid #f0f0f0; text-align: left; font-size: 10px; font-weight: 900; text-transform: uppercase; color: #999; letter-spacing: 1px; }
-        td { padding: 20px 10px; border-bottom: 1px solid #f9f9f9; font-size: 13px; font-weight: 700; }
-        
-        .total-section { display: flex; justify-content: flex-end; margin-top: 20px; }
-        .total-table { width: 250px; }
-        .total-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 12px; color: #666; font-weight: 700; }
-        .grand-total { border-top: 2px solid #111; padding-top: 15px; margin-top: 10px; font-size: 24px; font-weight: 900; font-style: italic; color: #ea580c; }
-        
-        .footer { margin-top: 80px; text-align: center; border-top: 1px solid #eee; padding-top: 30px; }
-        .footer-text { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 3px; color: #ccc; }
-        @media print { body { padding: 20px; } .payment-card { background: #111 !important; color: #fff !important; -webkit-print-color-adjust: exact; } }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <div>
-          <h1 class="brand-logo">THREADZS</h1>
-          <p class="tagline">Wear Beyond Ordinary</p>
-          <div style="margin-top: 20px; font-size: 10px; color: #777; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
-            1/1A, Shop No: 4, Eswaran Complex,<br/>Gate Lock Road, Madurai - 625009
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>THREADZS - Packing Slip - ${order.id}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+          body { font-family: 'Inter', sans-serif; padding: 40px; color: #111; max-width: 850px; margin: 0 auto; line-height: 1.5; }
+          .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid #111; padding-bottom: 30px; margin-bottom: 40px; }
+          .brand-logo { font-size: 38px; font-weight: 900; font-style: italic; letter-spacing: -2px; text-transform: uppercase; margin: 0; }
+          .tagline { font-size: 10px; font-weight: 900; letter-spacing: 4px; text-transform: uppercase; color: #ea580c; margin-top: 5px; }
+          .doc-title { font-size: 22px; font-weight: 900; text-transform: uppercase; letter-spacing: -1px; margin: 0; }
+          .order-id { font-size: 10px; font-weight: 700; color: #999; text-transform: uppercase; margin-top: 5px; }
+          .info-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; margin-bottom: 50px; }
+          .info-label { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; color: #ea580c; margin-bottom: 12px; }
+          .info-box { font-size: 14px; font-weight: 700; color: #444; }
+          .customer-name { font-size: 18px; font-weight: 900; color: #111; text-transform: uppercase; margin-bottom: 5px; }
+          .payment-card { background: #111; color: #fff; padding: 25px; border-radius: 20px; }
+          .payment-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 8px; }
+          .payment-val { font-weight: 900; color: #fff; }
+          .payment-label { color: #888; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+          th { padding: 15px 10px; border-bottom: 2px solid #f0f0f0; text-align: left; font-size: 10px; font-weight: 900; text-transform: uppercase; color: #999; letter-spacing: 1px; }
+          td { padding: 20px 10px; border-bottom: 1px solid #f9f9f9; font-size: 13px; font-weight: 700; }
+          .total-section { display: flex; justify-content: flex-end; margin-top: 20px; }
+          .total-table { width: 250px; }
+          .total-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 12px; color: #666; font-weight: 700; }
+          .grand-total { border-top: 2px solid #111; padding-top: 15px; margin-top: 10px; font-size: 24px; font-weight: 900; font-style: italic; color: #ea580c; }
+          .footer { margin-top: 80px; text-align: center; border-top: 1px solid #eee; padding-top: 30px; }
+          .footer-text { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 3px; color: #ccc; }
+          @media print { body { padding: 20px; } .payment-card { background: #111 !important; color: #fff !important; -webkit-print-color-adjust: exact; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <h1 class="brand-logo">THREADZS</h1>
+            <p class="tagline">Wear Beyond Ordinary</p>
+            <div style="margin-top: 20px; font-size: 10px; color: #777; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
+              1/1A, Shop No: 4, Eswaran Complex,<br/>Gate Lock Road, Madurai - 625009
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <h2 class="doc-title">Packing Slip</h2>
+            <p class="order-id">ID: #THZ-${(order.id).toString().split('-')[0]}</p>
+            <div style="margin-top: 20px; font-size: 12px; font-weight: 900;">${new Date(order.created_at).toLocaleDateString('en-IN', {day:'2-digit', month:'long', year:'numeric'})}</div>
           </div>
         </div>
-        <div style="text-align: right;">
-          <h2 class="doc-title">Packing Slip</h2>
-          <p class="order-id">ID: #THZ-${(order.id).toString().split('-')[0]}</p>
-          <div style="margin-top: 20px; font-size: 12px; font-weight: 900;">${new Date(order.created_at).toLocaleDateString('en-IN', {day:'2-digit', month:'long', year:'numeric'})}</div>
-        </div>
-      </div>
 
-      <div class="info-grid">
-        <div>
-          <div class="info-label">Ship To</div>
-          <div class="info-box">
-            <div class="customer-name">${order.customer_name}</div>
-            <div>${order.address}</div>
-            <div style="margin-top: 8px; color: #111;">Ph: ${order.phone}</div>
+        <div class="info-grid">
+          <div>
+            <div class="info-label">Ship To</div>
+            <div class="info-box">
+              <div class="customer-name">${order.customer_name}</div>
+              <div>${order.address}</div>
+              <div style="margin-top: 8px; color: #111;">Ph: ${order.phone}</div>
+            </div>
+          </div>
+          <div class="payment-card">
+            <div class="info-label" style="color: #ea580c;">Payment Details</div>
+            <div class="payment-row"><span class="payment-label">Method:</span> <span class="payment-val">Direct UPI</span></div>
+            <div class="payment-row"><span class="payment-label">Status:</span> <span class="payment-val" style="color: #10b981;">VERIFIED</span></div>
+            <div style="margin-top: 15px; font-size: 9px; color: #666; text-transform: uppercase;">Txn ID: ${order.payment_method.split(':').pop().trim()}</div>
           </div>
         </div>
-        <div class="payment-card">
-          <div class="info-label" style="color: #ea580c;">Payment Details</div>
-          <div class="payment-row"><span class="payment-label">Method:</span> <span class="payment-val">Direct UPI</span></div>
-          <div class="payment-row"><span class="payment-label">Status:</span> <span class="payment-val" style="color: #10b981;">VERIFIED</span></div>
-          <div style="margin-top: 15px; font-size: 9px; color: #666; text-transform: uppercase;">Txn ID: ${order.payment_method.split(':').pop().trim()}</div>
-        </div>
-      </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Item Description</th>
-            <th style="text-align: center;">Size</th>
-            <th style="text-align: center;">Qty</th>
-            <th style="text-align: right;">Price</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${itemsArray.map((item, index) => {
-            // Logic: If it's the last item, we make sure the total matches grand total exactly 
-            // by putting the full remaining balance there (includes shipping hidden inside).
-            const displayPrice = (index === itemCount - 1) 
-              ? totalPaid 
-              : (item.price * (item.quantity || item.qty || 1));
-
-            return `
+        <table>
+          <thead>
             <tr>
-              <td>
-                <div style="font-weight: 900; text-transform: uppercase;">${item.name}</div>
-                <div style="font-size: 9px; color: #aaa; margin-top: 4px; text-transform: uppercase;">Premium Cotton Streetwear</div>
-              </td>
-              <td style="text-align: center; color: #111;">${item.size || '-'}</td>
-              <td style="text-align: center; color: #111;">${item.quantity || item.qty || 1}</td>
-              <td style="text-align: right; font-weight: 900;">₹${displayPrice}</td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
+              <th>Item Description</th>
+              <th style="text-align: center;">Size</th>
+              <th style="text-align: center;">Qty</th>
+              <th style="text-align: right;">Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsArray.map((item, index) => {
+              const displayPrice = (index === itemCount - 1) 
+                ? totalPaid 
+                : (item.price * (item.quantity || item.qty || 1));
+              return `
+              <tr>
+                <td>
+                  <div style="font-weight: 900; text-transform: uppercase;">${item.name}</div>
+                  <div style="font-size: 9px; color: #aaa; margin-top: 4px; text-transform: uppercase;">Premium Cotton Streetwear</div>
+                </td>
+                <td style="text-align: center; color: #111;">${item.size || '-'}</td>
+                <td style="text-align: center; color: #111;">${item.quantity || item.qty || 1}</td>
+                <td style="text-align: right; font-weight: 900;">₹${displayPrice}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
 
-      <div class="total-section">
-        <div class="total-table">
-          <div class="total-row grand-total" style="border-top: none; padding-top: 0; margin-top: 0;">
-            <span style="font-size: 12px; font-style: normal; color: #999; text-transform: uppercase;">Total Paid</span>
-            <span>₹${totalPaid}</span>
+        <div class="total-section">
+          <div class="total-table">
+            <div class="total-row grand-total" style="border-top: none; padding-top: 0; margin-top: 0;">
+              <span style="font-size: 12px; font-style: normal; color: #999; text-transform: uppercase;">Total Paid</span>
+              <span>₹${totalPaid}</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="footer">
-        <p class="footer-text">Thank you for joining the culture.</p>
-        <p style="font-size: 8px; font-weight: 700; color: #ccc; margin-top: 10px;">@THREADZS_OFFICIAL</p>
-      </div>
-      
-      <script>
-        window.onload = function() { window.print(); window.close(); };
-      </script>
-    </body>
-    </html>
-  `;
+        <div class="footer">
+          <p class="footer-text">Thank you for joining the culture.</p>
+          <p style="font-size: 8px; font-weight: 700; color: #ccc; margin-top: 10px;">@THREADZS_OFFICIAL</p>
+        </div>
+        
+        <script>
+          window.onload = function() { window.print(); window.close(); };
+        </script>
+      </body>
+      </html>
+    `;
 
-  printWindow.document.write(htmlContent);
-  printWindow.document.close();
-};
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
 
   const totalSales = orders.reduce((acc, curr) => acc + (curr.total_amount || 0), 0);
   const totalTransactions = orders.length;
   const savedFees = totalSales * 0.02; 
   
-  // Replace the old line with this:
-const newOrdersCount = filteredOrders.filter(o => o.status === 'New').length;
+  const newOrdersCount = filteredOrders.filter(o => o.status === 'New').length;
   const processingCount = filteredOrders.filter(o => o.status === 'Processing').length;
   const shippedCount = filteredOrders.filter(o => o.status === 'Shipped').length;
   const totalUnitsInStock = products.reduce((acc, curr) => acc + (curr.stock || 0), 0);
@@ -538,7 +493,6 @@ const newOrdersCount = filteredOrders.filter(o => o.status === 'New').length;
     active={activeTab === 'orders'} 
     onClick={() => setActiveTab('orders')} 
   />
-  {/* FIXED BADGE LOGIC */}
   {newOrdersCount > 0 && (
     <span className="absolute top-1/2 -translate-y-1/2 right-4 bg-orange-600 text-[9px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-gray-900 shadow-lg animate-pulse">
       {newOrdersCount}
@@ -562,7 +516,6 @@ const newOrdersCount = filteredOrders.filter(o => o.status === 'New').length;
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         
-        {/* --- HEADER WITH REAL-TIME GLOBAL SEARCH --- */}
         <header className="bg-white h-16 px-8 flex items-center justify-between border-b border-gray-200 shadow-sm z-40 sticky top-0">
           <div className="relative w-96">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -581,7 +534,6 @@ const newOrdersCount = filteredOrders.filter(o => o.status === 'New').length;
               </button>
             )}
 
-            {/* LIVE SEARCH DROPDOWN UI */}
             <AnimatePresence>
               {showGlobalDropdown && globalSearch.length >= 2 && (
                 <motion.div 
@@ -961,7 +913,7 @@ const newOrdersCount = filteredOrders.filter(o => o.status === 'New').length;
           <RefreshCw size={14} className={isSyncing ? "animate-spin" : ""} />
         </button>
 
-        {/* BULK PURGE BUTTON (Supabase Free Tier Helper) */}
+        {/* BULK PURGE BUTTON */}
         <button 
           onClick={handlePurgeOldOrders}
           disabled={isPurging}
@@ -985,7 +937,51 @@ const newOrdersCount = filteredOrders.filter(o => o.status === 'New').length;
         </thead>
         <tbody className="divide-y divide-gray-100">
           {filteredOrders.length > 0 ? filteredOrders.map((order) => {
-             // ... keep your existing table row mapping logic here (const itemsArray = ...)
+             const itemsArray = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
+             return (
+               <tr key={order.id} className="hover:bg-gray-50/50 transition">
+                 <td className="p-6">
+                   <span className="text-xs font-black text-gray-900 block">#{(order.id).toString().split('-')[0]}</span>
+                   <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1">{formatDateTime(order.created_at)}</span>
+                   <div className="mt-2 text-[9px] font-bold text-gray-400">
+                     {itemsArray.map((i, idx) => (
+                       <div key={idx}>{i.quantity || i.qty || 1}x {i.name} ({i.size})</div>
+                     ))}
+                   </div>
+                 </td>
+                 <td className="p-6">
+                   <span className="text-xs font-black text-gray-900 block">{order.customer_name}</span>
+                   <span className="text-[10px] font-bold text-gray-500 block mt-1">{order.email}</span>
+                   <span className="text-[9px] font-bold text-gray-400 block mt-1">{order.phone}</span>
+                 </td>
+                 <td className="p-6">
+                   <span className="text-sm font-black italic text-gray-900 block">₹{order.total_amount}</span>
+                   <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-1 truncate w-32 block" title={order.payment_method}>{order.payment_method}</span>
+                 </td>
+                 <td className="p-6">
+                   <select
+                     value={order.status}
+                     onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                     className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full outline-none cursor-pointer appearance-none ${
+                       order.status === 'New' ? 'bg-rose-100 text-rose-700' :
+                       order.status === 'Processing' ? 'bg-orange-100 text-orange-700' :
+                       order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :
+                       'bg-emerald-100 text-emerald-700'
+                     }`}
+                   >
+                     <option value="New">New</option>
+                     <option value="Processing">Processing</option>
+                     <option value="Shipped">Shipped</option>
+                     <option value="Delivered">Delivered</option>
+                   </select>
+                 </td>
+                 <td className="p-6 text-right">
+                   <button onClick={() => printDeliverySlip(order)} className="bg-gray-100 text-gray-600 p-2 rounded-lg hover:bg-orange-50 hover:text-orange-600 transition shadow-sm">
+                     <Printer size={14} />
+                   </button>
+                 </td>
+               </tr>
+             );
           }) : (
             <tr>
               <td colSpan="5" className="p-20 text-center">
